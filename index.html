@@ -1,0 +1,839 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>025 · Chroma — Color Palette Extractor</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=DM+Mono:ital,wght@0,300;0,400;1,300&family=Cormorant+Garamond:ital,wght@0,300;0,400;1,300&display=swap" rel="stylesheet">
+<style>
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+  :root {
+    --bg: #0e0e0e;
+    --surface: #161616;
+    --border: #2a2a2a;
+    --text: #e8e4dc;
+    --muted: #6b6560;
+    --accent: #d4a853;
+  }
+
+  body {
+    background: var(--bg);
+    color: var(--text);
+    font-family: 'DM Mono', monospace;
+    min-height: 100vh;
+    display: flex;
+    flex-direction: column;
+  }
+
+  /* BACK LINK */
+  .back-bar {
+    padding: 12px 24px;
+    border-bottom: 1px solid var(--border);
+    display: flex;
+    align-items: center;
+    gap: 12px;
+  }
+  .back-bar a {
+    color: var(--muted);
+    text-decoration: none;
+    font-size: 11px;
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+    transition: color 0.2s;
+  }
+  .back-bar a:hover { color: var(--accent); }
+  .back-bar span { color: var(--border); font-size: 11px; }
+  .back-bar .app-id { color: var(--muted); font-size: 11px; letter-spacing: 0.12em; }
+
+  /* HEADER */
+  header {
+    padding: 48px 32px 24px;
+    border-bottom: 1px solid var(--border);
+  }
+  .header-inner {
+    max-width: 720px;
+    margin: 0 auto;
+  }
+  .eyebrow {
+    font-size: 11px;
+    letter-spacing: 0.2em;
+    text-transform: uppercase;
+    color: var(--accent);
+    margin-bottom: 10px;
+  }
+  h1 {
+    font-family: 'Bebas Neue', sans-serif;
+    font-size: clamp(52px, 10vw, 96px);
+    line-height: 0.9;
+    letter-spacing: 0.02em;
+    color: var(--text);
+    margin-bottom: 12px;
+  }
+  .tagline {
+    font-family: 'Cormorant Garamond', serif;
+    font-style: italic;
+    font-weight: 300;
+    font-size: 18px;
+    color: var(--muted);
+  }
+
+  /* MAIN */
+  main {
+    flex: 1;
+    padding: 40px 32px;
+  }
+  .inner {
+    max-width: 720px;
+    margin: 0 auto;
+  }
+
+  .gen-btn {
+    background: var(--accent);
+    color: #0e0e0e;
+    border: none;
+    padding: 0 28px;
+    font-family: 'Bebas Neue', sans-serif;
+    font-size: 18px;
+    letter-spacing: 0.1em;
+    cursor: pointer;
+    transition: opacity 0.2s;
+    flex-shrink: 0;
+  }
+  .gen-btn:hover { opacity: 0.85; }
+  .gen-btn:active { opacity: 0.7; }
+
+  /* ERROR */
+  .error-msg {
+    font-size: 11px;
+    letter-spacing: 0.1em;
+    color: #c0504a;
+    margin-top: -30px;
+    margin-bottom: 20px;
+    display: none;
+  }
+  .error-msg.show { display: block; }
+
+  /* SECTION LABEL */
+  .section-label {
+    font-size: 10px;
+    letter-spacing: 0.22em;
+    text-transform: uppercase;
+    color: var(--muted);
+    margin-bottom: 14px;
+    padding-bottom: 8px;
+    border-bottom: 1px solid var(--border);
+  }
+
+  /* PALETTE GRID */
+  .palette-section {
+    margin-bottom: 36px;
+    opacity: 0;
+    transform: translateY(12px);
+    transition: opacity 0.4s ease, transform 0.4s ease;
+  }
+  .palette-section.visible {
+    opacity: 1;
+    transform: translateY(0);
+  }
+
+  .swatch-grid {
+    display: grid;
+    grid-template-columns: repeat(5, 1fr);
+    gap: 0;
+    height: 100px;
+    border: 1px solid var(--border);
+    overflow: hidden;
+    margin-bottom: 10px;
+  }
+
+  .swatch {
+    position: relative;
+    cursor: pointer;
+    transition: flex 0.3s ease;
+  }
+  .swatch:hover { flex: 2; }
+  .swatch-grid.has-hover .swatch:not(:hover) { opacity: 0.75; }
+  .swatch-inner {
+    width: 100%;
+    height: 100%;
+    display: flex;
+    align-items: flex-end;
+    padding: 6px;
+    opacity: 0;
+    transition: opacity 0.2s;
+  }
+  .swatch:hover .swatch-inner { opacity: 1; }
+  .swatch-hex-label {
+    font-size: 9px;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    padding: 3px 5px;
+    background: rgba(0,0,0,0.45);
+    color: #fff;
+    font-family: 'DM Mono', monospace;
+    backdrop-filter: blur(4px);
+  }
+
+  .hex-labels {
+    display: grid;
+    grid-template-columns: repeat(5, 1fr);
+    gap: 4px;
+  }
+  .hex-chip {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    cursor: pointer;
+    padding: 5px 8px;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    transition: border-color 0.2s;
+  }
+  .hex-chip:hover { border-color: var(--accent); }
+  .hex-dot {
+    width: 12px;
+    height: 12px;
+    border-radius: 50%;
+    flex-shrink: 0;
+  }
+  .hex-chip span {
+    font-size: 10px;
+    letter-spacing: 0.1em;
+    color: var(--muted);
+    text-transform: uppercase;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  /* COPIED TOAST */
+  .toast {
+    position: fixed;
+    bottom: 24px;
+    left: 50%;
+    transform: translateX(-50%) translateY(20px);
+    background: var(--accent);
+    color: #0e0e0e;
+    font-family: 'Bebas Neue', sans-serif;
+    font-size: 15px;
+    letter-spacing: 0.15em;
+    padding: 10px 24px;
+    opacity: 0;
+    pointer-events: none;
+    transition: opacity 0.25s, transform 0.25s;
+  }
+  .toast.show {
+    opacity: 1;
+    transform: translateX(-50%) translateY(0);
+  }
+
+  /* SHARED LIVE PREVIEW BAR */
+  #shared-preview-bar {
+    display: flex;
+    align-items: center;
+    gap: 14px;
+    padding: 10px 16px;
+    border-bottom: 1px solid var(--border);
+    background: rgba(255,255,255,0.02);
+  }
+  #shared-preview {
+    width: 32px;
+    height: 32px;
+    border: 1px solid var(--border);
+    background: #d4a853;
+    transition: background 0.15s;
+    flex-shrink: 0;
+  }
+  #shared-hex-label {
+    font-family: 'DM Mono', monospace;
+    font-size: 14px;
+    letter-spacing: 0.1em;
+    color: var(--muted);
+    text-transform: uppercase;
+  }
+
+  /* INPUT PANEL */
+  .input-panel {
+    border: 1px solid var(--border);
+    background: var(--surface);
+    margin-bottom: 40px;
+    overflow: hidden;
+  }
+
+  .input-tabs {
+    display: flex;
+    border-bottom: 1px solid var(--border);
+  }
+  .input-tab {
+    flex: 1;
+    padding: 10px 0;
+    background: transparent;
+    border: none;
+    border-right: 1px solid var(--border);
+    color: var(--muted);
+    font-family: 'DM Mono', monospace;
+    font-size: 11px;
+    letter-spacing: 0.18em;
+    text-transform: uppercase;
+    cursor: pointer;
+    transition: color 0.2s, background 0.2s;
+  }
+  .input-tab:last-child { border-right: none; }
+  .input-tab:hover { color: var(--text); background: rgba(255,255,255,0.03); }
+  .input-tab.active { color: var(--accent); background: rgba(212,168,83,0.06); }
+
+  .input-pane { display: none; }
+  .input-pane.active { display: flex; align-items: stretch; }
+
+  /* HEX pane */
+  .swatch-preview {
+    width: 56px;
+    flex-shrink: 0;
+    background: #888;
+    transition: background 0.3s;
+  }
+  .hex-wrap {
+    flex: 1;
+    display: flex;
+    align-items: center;
+    padding: 0 16px;
+    gap: 8px;
+  }
+  .hash {
+    color: var(--muted);
+    font-size: 22px;
+    font-family: 'DM Mono', monospace;
+    font-weight: 300;
+    user-select: none;
+  }
+  #hex-input {
+    flex: 1;
+    background: transparent;
+    border: none;
+    outline: none;
+    color: var(--text);
+    font-family: 'DM Mono', monospace;
+    font-size: 22px;
+    font-weight: 400;
+    letter-spacing: 0.08em;
+    padding: 18px 0;
+    text-transform: uppercase;
+    caret-color: var(--accent);
+  }
+  #hex-input::placeholder { color: var(--border); }
+
+  /* RGB pane */
+  .channel-pane {
+    flex: 1;
+    display: grid;
+    grid-template-columns: 1fr 1fr 1fr;
+    gap: 0;
+  }
+  .channel-group {
+    display: flex;
+    flex-direction: column;
+    padding: 14px 16px 12px;
+    border-right: 1px solid var(--border);
+    gap: 8px;
+  }
+  .channel-group:last-child { border-right: none; }
+  .channel-label {
+    font-size: 9px;
+    letter-spacing: 0.22em;
+    text-transform: uppercase;
+    color: var(--muted);
+  }
+  .channel-input {
+    background: transparent;
+    border: none;
+    outline: none;
+    color: var(--text);
+    font-family: 'DM Mono', monospace;
+    font-size: 20px;
+    font-weight: 400;
+    width: 100%;
+    caret-color: var(--accent);
+    padding: 0;
+  }
+  .channel-input::placeholder { color: var(--border); }
+  .channel-slider {
+    -webkit-appearance: none;
+    appearance: none;
+    width: 100%;
+    height: 3px;
+    border-radius: 0;
+    outline: none;
+    cursor: pointer;
+    background: var(--border);
+  }
+  .channel-slider::-webkit-slider-thumb {
+    -webkit-appearance: none;
+    width: 12px; height: 12px;
+    border-radius: 50%;
+    background: var(--accent);
+    cursor: pointer;
+  }
+  .channel-slider::-moz-range-thumb {
+    width: 12px; height: 12px;
+    border-radius: 50%;
+    background: var(--accent);
+    border: none;
+    cursor: pointer;
+  }
+
+  /* Native color picker pane */
+  .native-pane {
+    flex: 1;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 16px;
+    gap: 16px;
+  }
+  .native-pane label {
+    font-size: 11px;
+    letter-spacing: 0.15em;
+    text-transform: uppercase;
+    color: var(--muted);
+  }
+  #color-picker {
+    width: 56px;
+    height: 56px;
+    border: none;
+    background: none;
+    cursor: pointer;
+    padding: 0;
+    border-radius: 0;
+  }
+  #color-picker::-webkit-color-swatch-wrapper { padding: 0; }
+  #color-picker::-webkit-color-swatch { border: 1px solid var(--border); border-radius: 0; }
+
+  /* INFO ROW */
+  .info-row {
+    display: grid;
+    grid-template-columns: 1fr 1fr 1fr;
+    gap: 12px;
+    margin-top: 10px;
+  }
+  .info-cell {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    padding: 12px;
+  }
+  .info-cell .ic-label {
+    font-size: 9px;
+    letter-spacing: 0.2em;
+    text-transform: uppercase;
+    color: var(--muted);
+    margin-bottom: 4px;
+  }
+  .info-cell .ic-val {
+    font-size: 13px;
+    color: var(--text);
+    letter-spacing: 0.05em;
+  }
+
+  /* EMPTY STATE */
+  .empty-state {
+    text-align: center;
+    padding: 60px 20px;
+    color: var(--border);
+  }
+  .empty-state .big-hash {
+    font-family: 'Bebas Neue', sans-serif;
+    font-size: 80px;
+    line-height: 1;
+    letter-spacing: 0.05em;
+    margin-bottom: 12px;
+  }
+  .empty-state p {
+    font-family: 'Cormorant Garamond', serif;
+    font-style: italic;
+    font-size: 16px;
+    color: var(--muted);
+  }
+
+  @media (max-width: 600px) {
+    header { padding: 28px 20px 20px; }
+    main { padding: 28px 20px; }
+    .swatch-grid { height: 70px; }
+    .hex-labels { grid-template-columns: repeat(5, 1fr); }
+    .hex-chip span { display: none; }
+    .info-row { grid-template-columns: 1fr 1fr; }
+    .gen-btn { padding: 0 16px; font-size: 15px; }
+    #hex-input { font-size: 18px; }
+    .channel-input { font-size: 16px; }
+    .channel-group { padding: 10px 10px 8px; }
+  }
+</style>
+</head>
+<body>
+
+<div class="back-bar">
+  <a href="https://augustineiacopelli.github.io">↖ Portfolio</a>
+  <span>·</span>
+  <span class="app-id">025 · Chroma</span>
+</div>
+
+<header>
+  <div class="header-inner">
+    <div class="eyebrow">App a Day · 025 · Utility</div>
+    <h1>Chroma</h1>
+    <p class="tagline">Extract a full palette from any hex color.</p>
+  </div>
+</header>
+
+<main>
+  <div class="inner">
+
+    <div class="input-panel">
+      <!-- Tab bar -->
+      <div class="input-tabs">
+        <button class="input-tab active" data-tab="hex">HEX</button>
+        <button class="input-tab" data-tab="rgb">RGB</button>
+        <button class="input-tab" data-tab="hsl">HSL</button>
+        <button class="input-tab" data-tab="pick">PICKER</button>
+      </div>
+
+      <!-- Shared live preview -->
+      <div id="shared-preview-bar">
+        <div id="shared-preview"></div>
+        <span id="shared-hex-label">#D4A853</span>
+      </div>
+
+      <!-- HEX pane -->
+      <div class="input-pane active" id="pane-hex">
+        <div class="swatch-preview" id="swatch-preview"></div>
+        <div class="hex-wrap">
+          <span class="hash">#</span>
+          <input type="text" id="hex-input" placeholder="D4A853" maxlength="6" spellcheck="false" autocomplete="off">
+        </div>
+        <button class="gen-btn" id="gen-btn">GENERATE</button>
+      </div>
+
+      <!-- RGB pane -->
+      <div class="input-pane" id="pane-rgb">
+        <div class="channel-pane">
+          <div class="channel-group">
+            <span class="channel-label">R</span>
+            <input class="channel-input" id="rgb-r" type="number" min="0" max="255" placeholder="0">
+            <input class="channel-slider" id="slider-r" type="range" min="0" max="255" value="0">
+          </div>
+          <div class="channel-group">
+            <span class="channel-label">G</span>
+            <input class="channel-input" id="rgb-g" type="number" min="0" max="255" placeholder="0">
+            <input class="channel-slider" id="slider-g" type="range" min="0" max="255" value="0">
+          </div>
+          <div class="channel-group">
+            <span class="channel-label">B</span>
+            <input class="channel-input" id="rgb-b" type="number" min="0" max="255" placeholder="0">
+            <input class="channel-slider" id="slider-b" type="range" min="0" max="255" value="0">
+          </div>
+        </div>
+        <button class="gen-btn" id="gen-btn-rgb">GENERATE</button>
+      </div>
+
+      <!-- HSL pane -->
+      <div class="input-pane" id="pane-hsl">
+        <div class="channel-pane">
+          <div class="channel-group">
+            <span class="channel-label">H °</span>
+            <input class="channel-input" id="hsl-h" type="number" min="0" max="360" placeholder="0">
+            <input class="channel-slider" id="slider-h" type="range" min="0" max="360" value="0">
+          </div>
+          <div class="channel-group">
+            <span class="channel-label">S %</span>
+            <input class="channel-input" id="hsl-s" type="number" min="0" max="100" placeholder="0">
+            <input class="channel-slider" id="slider-s" type="range" min="0" max="100" value="0">
+          </div>
+          <div class="channel-group">
+            <span class="channel-label">L %</span>
+            <input class="channel-input" id="hsl-l" type="number" min="0" max="100" placeholder="0">
+            <input class="channel-slider" id="slider-l" type="range" min="0" max="100" value="0">
+          </div>
+        </div>
+        <button class="gen-btn" id="gen-btn-hsl">GENERATE</button>
+      </div>
+
+      <!-- PICKER pane -->
+      <div class="input-pane" id="pane-pick">
+        <div class="native-pane">
+          <label for="color-picker">Choose a color</label>
+          <input type="color" id="color-picker" value="#d4a853">
+          <span id="picker-hex-display" style="font-size:14px;letter-spacing:0.1em;color:var(--muted)">#D4A853</span>
+        </div>
+        <button class="gen-btn" id="gen-btn-pick">GENERATE</button>
+      </div>
+    </div>
+    <div class="error-msg" id="error-msg" style="margin-top:-32px;margin-bottom:16px;">Enter a valid 6-character hex color.</div>
+
+    <div id="output"></div>
+
+    <div class="empty-state" id="empty-state">
+      <div class="big-hash">#——</div>
+      <p>Enter any hex color to extract complementary, analogous, triadic, split-complementary, and tetradic palettes.</p>
+    </div>
+
+  </div>
+</main>
+
+<div class="toast" id="toast">Copied!</div>
+
+<script>
+// ── Color math ──────────────────────────────────────────────
+
+function hexToHsl(hex) {
+  let r = parseInt(hex.slice(0,2),16)/255;
+  let g = parseInt(hex.slice(2,4),16)/255;
+  let b = parseInt(hex.slice(4,6),16)/255;
+  const max = Math.max(r,g,b), min = Math.min(r,g,b);
+  let h, s, l = (max+min)/2;
+  if (max === min) { h = s = 0; }
+  else {
+    const d = max - min;
+    s = l > 0.5 ? d / (2 - max - min) : d / (max + min);
+    switch (max) {
+      case r: h = ((g - b) / d + (g < b ? 6 : 0)) / 6; break;
+      case g: h = ((b - r) / d + 2) / 6; break;
+      case b: h = ((r - g) / d + 4) / 6; break;
+    }
+  }
+  return [h * 360, s * 100, l * 100];
+}
+
+function hslToHex(h, s, l) {
+  h = ((h % 360) + 360) % 360;
+  s = Math.max(0, Math.min(100, s));
+  l = Math.max(0, Math.min(100, l));
+  s /= 100; l /= 100;
+  const k = n => (n + h / 30) % 12;
+  const a = s * Math.min(l, 1 - l);
+  const f = n => l - a * Math.max(-1, Math.min(k(n) - 3, Math.min(9 - k(n), 1)));
+  const toHex = v => Math.round(v * 255).toString(16).padStart(2, '0');
+  return (toHex(f(0)) + toHex(f(8)) + toHex(f(4))).toUpperCase();
+}
+
+function hexToRgb(hex) {
+  return [parseInt(hex.slice(0,2),16), parseInt(hex.slice(2,4),16), parseInt(hex.slice(4,6),16)];
+}
+
+function rgbToHex(r, g, b) {
+  return [r, g, b].map(v => Math.round(Math.max(0, Math.min(255, v))).toString(16).padStart(2, '0')).join('').toUpperCase();
+}
+
+function getPalettes(hex) {
+  const [h, s, l] = hexToHsl(hex);
+  return [
+    { name: 'Complementary', desc: 'Base + opposite hue',
+      colors: [hex, hslToHex(h,s,l*1.15), hslToHex(h+30,s*.7,l*1.2), hslToHex(h+180,s,l), hslToHex(h+180,s*.8,l*.85)] },
+    { name: 'Analogous', desc: 'Adjacent hues in harmony',
+      colors: [hslToHex(h-40,s,l), hslToHex(h-20,s,l), hex, hslToHex(h+20,s,l), hslToHex(h+40,s,l)] },
+    { name: 'Triadic', desc: 'Three equidistant hues',
+      colors: [hex, hslToHex(h,s*.6,l*1.2), hslToHex(h+120,s,l), hslToHex(h+120,s*.6,l*1.2), hslToHex(h+240,s,l)] },
+    { name: 'Split-Complementary', desc: 'Base + two near-opposite hues',
+      colors: [hex, hslToHex(h,s*.7,l*1.2), hslToHex(h+150,s,l), hslToHex(h+180,s*.5,l*1.15), hslToHex(h+210,s,l)] },
+    { name: 'Tetradic', desc: 'Four hues at 90° intervals',
+      colors: [hex, hslToHex(h+90,s,l), hslToHex(h+180,s,l), hslToHex(h+270,s,l), hslToHex(h+45,s*.6,l*1.15)] },
+  ];
+}
+
+// ── DOM refs (declared before any use) ───────────────────────
+
+const hexInput        = document.getElementById('hex-input');
+const swatchPreview   = document.getElementById('swatch-preview');
+const sharedPreview   = document.getElementById('shared-preview');
+const sharedHexLabel  = document.getElementById('shared-hex-label');
+const errorMsg        = document.getElementById('error-msg');
+const outputEl        = document.getElementById('output');
+const emptyState      = document.getElementById('empty-state');
+const toast           = document.getElementById('toast');
+const colorPicker     = document.getElementById('color-picker');
+const pickerHexDisplay = document.getElementById('picker-hex-display');
+
+let toastTimer = null;
+let currentHex = 'D4A853';
+
+function isValidHex(v) { return /^[0-9A-Fa-f]{6}$/.test(v); }
+
+// ── Core sync: update every input from a hex string ──────────
+
+function syncAll(hex) {
+  currentHex = hex;
+
+  // Shared live preview bar
+  sharedPreview.style.background = '#' + hex;
+  sharedHexLabel.textContent = '#' + hex;
+
+  // HEX pane
+  hexInput.value = hex;
+  swatchPreview.style.background = '#' + hex;
+
+  // RGB pane
+  const [r, g, b] = hexToRgb(hex);
+  document.getElementById('rgb-r').value = r;
+  document.getElementById('rgb-g').value = g;
+  document.getElementById('rgb-b').value = b;
+  document.getElementById('slider-r').value = r;
+  document.getElementById('slider-g').value = g;
+  document.getElementById('slider-b').value = b;
+
+  // HSL pane
+  const [h, s, l] = hexToHsl(hex);
+  document.getElementById('hsl-h').value = Math.round(h);
+  document.getElementById('hsl-s').value = Math.round(s);
+  document.getElementById('hsl-l').value = Math.round(l);
+  document.getElementById('slider-h').value = Math.round(h);
+  document.getElementById('slider-s').value = Math.round(s);
+  document.getElementById('slider-l').value = Math.round(l);
+
+  // Picker pane
+  colorPicker.value = '#' + hex;
+  pickerHexDisplay.textContent = '#' + hex;
+}
+
+// ── Tab switching ─────────────────────────────────────────────
+
+document.querySelectorAll('.input-tab').forEach(tab => {
+  tab.addEventListener('click', () => {
+    document.querySelectorAll('.input-tab').forEach(t => t.classList.remove('active'));
+    document.querySelectorAll('.input-pane').forEach(p => p.classList.remove('active'));
+    tab.classList.add('active');
+    document.getElementById('pane-' + tab.dataset.tab).classList.add('active');
+  });
+});
+
+// ── HEX pane ─────────────────────────────────────────────────
+
+hexInput.addEventListener('input', () => {
+  const val = hexInput.value.replace(/[^0-9A-Fa-f]/g, '');
+  hexInput.value = val;
+  if (isValidHex(val)) {
+    syncAll(val.toUpperCase());
+    errorMsg.classList.remove('show');
+  }
+});
+hexInput.addEventListener('keydown', e => {
+  if (e.key === 'Enter') {
+    if (isValidHex(hexInput.value)) { errorMsg.classList.remove('show'); generate(hexInput.value.toUpperCase()); }
+    else errorMsg.classList.add('show');
+  }
+});
+document.getElementById('gen-btn').addEventListener('click', () => {
+  const val = hexInput.value;
+  if (!isValidHex(val)) { errorMsg.classList.add('show'); return; }
+  errorMsg.classList.remove('show');
+  generate(val.toUpperCase());
+});
+
+// ── RGB pane ─────────────────────────────────────────────────
+
+function rgbChanged() {
+  const r = Math.max(0, Math.min(255, parseInt(document.getElementById('rgb-r').value) || 0));
+  const g = Math.max(0, Math.min(255, parseInt(document.getElementById('rgb-g').value) || 0));
+  const b = Math.max(0, Math.min(255, parseInt(document.getElementById('rgb-b').value) || 0));
+  syncAll(rgbToHex(r, g, b));
+}
+
+['r', 'g', 'b'].forEach(ch => {
+  const numEl    = document.getElementById('rgb-' + ch);
+  const sliderEl = document.getElementById('slider-' + ch);
+  numEl.addEventListener('input',    () => { sliderEl.value = numEl.value;    rgbChanged(); });
+  sliderEl.addEventListener('input', () => { numEl.value    = sliderEl.value; rgbChanged(); });
+});
+
+document.getElementById('gen-btn-rgb').addEventListener('click', () => generate(currentHex));
+
+// ── HSL pane ─────────────────────────────────────────────────
+
+function hslChanged() {
+  const h = parseInt(document.getElementById('hsl-h').value) || 0;
+  const s = parseInt(document.getElementById('hsl-s').value) || 0;
+  const l = parseInt(document.getElementById('hsl-l').value) || 0;
+  syncAll(hslToHex(h, s, l));
+}
+
+['h', 's', 'l'].forEach(ch => {
+  const numEl    = document.getElementById('hsl-' + ch);
+  const sliderEl = document.getElementById('slider-' + ch);
+  numEl.addEventListener('input',    () => { sliderEl.value = numEl.value;    hslChanged(); });
+  sliderEl.addEventListener('input', () => { numEl.value    = sliderEl.value; hslChanged(); });
+});
+
+document.getElementById('gen-btn-hsl').addEventListener('click', () => generate(currentHex));
+
+// ── Picker pane ───────────────────────────────────────────────
+
+colorPicker.addEventListener('input', () => {
+  syncAll(colorPicker.value.slice(1).toUpperCase());
+});
+document.getElementById('gen-btn-pick').addEventListener('click', () => generate(currentHex));
+
+// ── Copy ──────────────────────────────────────────────────────
+
+function copyHex(hex) {
+  navigator.clipboard.writeText('#' + hex).catch(() => {});
+  if (toastTimer) clearTimeout(toastTimer);
+  toast.classList.add('show');
+  toastTimer = setTimeout(() => toast.classList.remove('show'), 1600);
+}
+
+// ── Generate ─────────────────────────────────────────────────
+
+function generate(hex) {
+  const palettes = getPalettes(hex);
+  const [h, s, l] = hexToHsl(hex);
+  const [r, g, b] = hexToRgb(hex);
+
+  emptyState.style.display = 'none';
+  outputEl.innerHTML = '';
+
+  const infoSection = document.createElement('div');
+  infoSection.className = 'palette-section';
+  infoSection.innerHTML = `
+    <div class="section-label">Base Color · #${hex}</div>
+    <div class="info-row">
+      <div class="info-cell"><div class="ic-label">Hex</div><div class="ic-val">#${hex}</div></div>
+      <div class="info-cell"><div class="ic-label">RGB</div><div class="ic-val">${r}, ${g}, ${b}</div></div>
+      <div class="info-cell"><div class="ic-label">HSL</div><div class="ic-val">${Math.round(h)}° ${Math.round(s)}% ${Math.round(l)}%</div></div>
+    </div>`;
+  outputEl.appendChild(infoSection);
+  requestAnimationFrame(() => requestAnimationFrame(() => infoSection.classList.add('visible')));
+
+  palettes.forEach((pal, i) => {
+    const sec = document.createElement('div');
+    sec.className = 'palette-section';
+    const grid  = pal.colors.map(c => `<div class="swatch" style="background:#${c}" onclick="copyHex('${c}')"><div class="swatch-inner"><span class="swatch-hex-label">#${c}</span></div></div>`).join('');
+    const chips = pal.colors.map(c => `<div class="hex-chip" onclick="copyHex('${c}')"><div class="hex-dot" style="background:#${c}"></div><span>#${c}</span></div>`).join('');
+    sec.innerHTML = `
+      <div class="section-label">${pal.name} <span style="font-weight:300;letter-spacing:0.08em;color:#4a4540"> · ${pal.desc}</span></div>
+      <div class="swatch-grid">${grid}</div>
+      <div class="hex-labels">${chips}</div>`;
+    outputEl.appendChild(sec);
+    setTimeout(() => requestAnimationFrame(() => requestAnimationFrame(() => sec.classList.add('visible'))), (i + 1) * 80);
+  });
+
+  const tsSection = document.createElement('div');
+  tsSection.className = 'palette-section';
+  const tints  = [90,80,70,60,50].map(lv => hslToHex(h, s, lv));
+  const shades = [40,30,20,14,8].map(lv => hslToHex(h, s, lv));
+  const mkGrid  = arr => arr.map(c => `<div class="swatch" style="background:#${c}" onclick="copyHex('${c}')"><div class="swatch-inner"><span class="swatch-hex-label">#${c}</span></div></div>`).join('');
+  const mkChips = arr => arr.map(c => `<div class="hex-chip" onclick="copyHex('${c}')"><div class="hex-dot" style="background:#${c}"></div><span>#${c}</span></div>`).join('');
+  tsSection.innerHTML = `
+    <div class="section-label">Tints <span style="color:#4a4540">· Lighter values</span></div>
+    <div class="swatch-grid">${mkGrid(tints)}</div>
+    <div class="hex-labels">${mkChips(tints)}</div>
+    <div style="height:16px"></div>
+    <div class="section-label">Shades <span style="color:#4a4540">· Darker values</span></div>
+    <div class="swatch-grid">${mkGrid(shades)}</div>
+    <div class="hex-labels" style="margin-bottom:0">${mkChips(shades)}</div>`;
+  outputEl.appendChild(tsSection);
+  setTimeout(() => requestAnimationFrame(() => requestAnimationFrame(() => tsSection.classList.add('visible'))), 6 * 80);
+}
+
+// ── Init ──────────────────────────────────────────────────────
+syncAll('D4A853');
+</script>
+</body>
+</html>

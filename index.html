@@ -455,6 +455,134 @@
     color: var(--muted);
   }
 
+  /* EMAIL BUTTON */
+  .email-btn {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 100%;
+    padding: 14px;
+    background: transparent;
+    border: 1px solid var(--border);
+    color: var(--muted);
+    font-family: 'Bebas Neue', sans-serif;
+    font-size: 16px;
+    letter-spacing: 0.18em;
+    text-decoration: none;
+    transition: border-color 0.2s, color 0.2s, background 0.2s;
+    cursor: pointer;
+  }
+  .email-btn:hover {
+    border-color: var(--accent);
+    color: var(--accent);
+    background: rgba(212,168,83,0.05);
+  }
+
+  /* CAMERA PANE */
+  .cam-pane {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+  }
+  .cam-drop-zone {
+    position: relative;
+    min-height: 200px;
+    cursor: pointer;
+    overflow: hidden;
+  }
+  .cam-drop-zone.drag-over { outline: 2px dashed var(--accent); }
+  .cam-prompt {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    min-height: 200px;
+    padding: 24px;
+    transition: background 0.2s;
+  }
+  .cam-prompt:hover { background: rgba(255,255,255,0.03); }
+  .cam-icon { font-size: 32px; color: var(--muted); line-height: 1; }
+  .cam-prompt-text {
+    font-family: 'Bebas Neue', sans-serif;
+    font-size: 18px;
+    letter-spacing: 0.1em;
+    color: var(--muted);
+  }
+  .cam-prompt-sub {
+    font-size: 10px;
+    letter-spacing: 0.15em;
+    text-transform: uppercase;
+    color: var(--border);
+  }
+  .cam-canvas-wrap {
+    position: relative;
+    width: 100%;
+    touch-action: none;
+  }
+  .cam-canvas-wrap canvas {
+    display: block;
+    width: 100%;
+    height: auto;
+    max-height: 340px;
+    object-fit: contain;
+    cursor: crosshair;
+  }
+  .cam-crosshair {
+    position: absolute;
+    width: 40px;
+    height: 40px;
+    transform: translate(-50%, -50%);
+    pointer-events: none;
+    top: 50%;
+    left: 50%;
+  }
+  .ch-ring {
+    position: absolute;
+    inset: 0;
+    border-radius: 50%;
+    border: 2px solid #fff;
+    box-shadow: 0 0 0 1px rgba(0,0,0,0.5), inset 0 0 0 1px rgba(0,0,0,0.3);
+  }
+  .ch-dot {
+    position: absolute;
+    width: 4px; height: 4px;
+    background: #fff;
+    border-radius: 50%;
+    top: 50%; left: 50%;
+    transform: translate(-50%,-50%);
+    box-shadow: 0 0 0 1px rgba(0,0,0,0.5);
+  }
+  .cam-pixel-preview {
+    position: absolute;
+    width: 48px; height: 48px;
+    border-radius: 50%;
+    border: 3px solid #fff;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.5);
+    pointer-events: none;
+    top: 12px; right: 12px;
+    background: #888;
+    transition: background 0.05s;
+  }
+  .cam-actions {
+    display: flex;
+    align-items: stretch;
+    border-top: 1px solid var(--border);
+  }
+  .cam-retake-btn {
+    background: transparent;
+    border: none;
+    border-right: 1px solid var(--border);
+    color: var(--muted);
+    font-family: 'Bebas Neue', sans-serif;
+    font-size: 15px;
+    letter-spacing: 0.12em;
+    padding: 0 20px;
+    cursor: pointer;
+    transition: color 0.2s;
+  }
+  .cam-retake-btn:hover { color: var(--text); }
+
   @media (max-width: 600px) {
     header { padding: 28px 20px 20px; }
     main { padding: 28px 20px; }
@@ -495,6 +623,7 @@
         <button class="input-tab" data-tab="rgb">RGB</button>
         <button class="input-tab" data-tab="hsl">HSL</button>
         <button class="input-tab" data-tab="pick">PICKER</button>
+        <button class="input-tab" data-tab="cam">PHOTO</button>
       </div>
 
       <!-- Shared live preview -->
@@ -566,8 +695,38 @@
         </div>
         <button class="gen-btn" id="gen-btn-pick">GENERATE</button>
       </div>
+
+      <!-- CAMERA pane -->
+      <div class="input-pane" id="pane-cam">
+        <div class="cam-pane">
+          <div class="cam-drop-zone" id="cam-drop-zone">
+            <input type="file" id="cam-file" accept="image/*" capture="environment" style="display:none">
+            <div class="cam-prompt" id="cam-prompt">
+              <div class="cam-icon">⬆</div>
+              <div class="cam-prompt-text">Take a photo or upload an image</div>
+              <div class="cam-prompt-sub">Tap to open camera · or drag & drop</div>
+            </div>
+            <div class="cam-canvas-wrap" id="cam-canvas-wrap" style="display:none">
+              <canvas id="cam-canvas"></canvas>
+              <div class="cam-crosshair" id="cam-crosshair">
+                <div class="ch-ring"></div>
+                <div class="ch-dot"></div>
+              </div>
+              <div class="cam-pixel-preview" id="cam-pixel-preview"></div>
+            </div>
+          </div>
+          <div class="cam-actions">
+            <button class="cam-retake-btn" id="cam-retake-btn" style="display:none">↺ RETAKE</button>
+            <button class="gen-btn" id="gen-btn-cam">GENERATE</button>
+          </div>
+        </div>
+      </div>
     </div>
     <div class="error-msg" id="error-msg" style="margin-top:-32px;margin-bottom:16px;">Enter a valid 6-character hex color.</div>
+
+    <div id="email-bar" style="display:none; margin-bottom:20px;">
+      <a id="email-link" href="#" class="email-btn">✉ EMAIL THIS PALETTE</a>
+    </div>
 
     <div id="output"></div>
 
@@ -707,7 +866,7 @@ document.querySelectorAll('.input-tab').forEach(tab => {
 // ── HEX pane ─────────────────────────────────────────────────
 
 hexInput.addEventListener('input', () => {
-  const val = hexInput.value.replace(/[^0-9A-Fa-f]/g, '');
+  const val = hexInput.value.replace(/^#/, '').replace(/[^0-9A-Fa-f]/g, '').slice(0, 6);
   hexInput.value = val;
   if (isValidHex(val)) {
     syncAll(val.toUpperCase());
@@ -779,6 +938,33 @@ function copyHex(hex) {
   toastTimer = setTimeout(() => toast.classList.remove('show'), 1600);
 }
 
+// ── Email builder ─────────────────────────────────────────────
+
+function buildEmailBody(hex) {
+  const [h, s, l] = hexToHsl(hex);
+  const [r, g, b] = hexToRgb(hex);
+  const palettes  = getPalettes(hex);
+  const tints     = [90,80,70,60,50].map(lv => hslToHex(h, s, lv));
+  const shades    = [40,30,20,14,8].map(lv => hslToHex(h, s, lv));
+
+  let lines = [];
+  lines.push('CHROMA PALETTE · #' + hex);
+  lines.push('Base: #' + hex + ' | rgb(' + r + ',' + g + ',' + b + ') | hsl(' + Math.round(h) + ',' + Math.round(s) + '%,' + Math.round(l) + '%)');
+  lines.push('');
+
+  palettes.forEach(pal => {
+    lines.push(pal.name + ': ' + pal.colors.map(c => '#' + c).join('  '));
+  });
+
+  lines.push('');
+  lines.push('Tints:  ' + tints.map(c => '#' + c).join('  '));
+  lines.push('Shades: ' + shades.map(c => '#' + c).join('  '));
+  lines.push('');
+  lines.push('Generated by Chroma — augustineiacopelli.github.io/appaday-025-chroma');
+
+  return lines.join('\n');
+}
+
 // ── Generate ─────────────────────────────────────────────────
 
 function generate(hex) {
@@ -788,6 +974,14 @@ function generate(hex) {
 
   emptyState.style.display = 'none';
   outputEl.innerHTML = '';
+
+  // Build and show email button
+  const emailBar  = document.getElementById('email-bar');
+  const emailLink = document.getElementById('email-link');
+  const subject   = encodeURIComponent(`Chroma Palette · #${hex}`);
+  const body      = encodeURIComponent(buildEmailBody(hex));
+  emailLink.href  = `mailto:?subject=${subject}&body=${body}`;
+  emailBar.style.display = '';
 
   const infoSection = document.createElement('div');
   infoSection.className = 'palette-section';
@@ -831,6 +1025,120 @@ function generate(hex) {
   outputEl.appendChild(tsSection);
   setTimeout(() => requestAnimationFrame(() => requestAnimationFrame(() => tsSection.classList.add('visible'))), 6 * 80);
 }
+
+// ── Camera / photo pane ───────────────────────────────────────
+
+(function() {
+  const camFile       = document.getElementById('cam-file');
+  const camDropZone   = document.getElementById('cam-drop-zone');
+  const camPrompt     = document.getElementById('cam-prompt');
+  const camCanvasWrap = document.getElementById('cam-canvas-wrap');
+  const camCanvas     = document.getElementById('cam-canvas');
+  const camCrosshair  = document.getElementById('cam-crosshair');
+  const camPixelPrev  = document.getElementById('cam-pixel-preview');
+  const camRetakeBtn  = document.getElementById('cam-retake-btn');
+
+  const MAX_W = 800;
+  let ctx = null;
+  let imgW = 0, imgH = 0; // rendered canvas dimensions
+  let crossX = 0.5, crossY = 0.5; // fractional position 0–1
+
+  // Open file picker on prompt click
+  camPrompt.addEventListener('click', () => camFile.click());
+
+  // Drag & drop
+  camDropZone.addEventListener('dragover', e => { e.preventDefault(); camDropZone.classList.add('drag-over'); });
+  camDropZone.addEventListener('dragleave', () => camDropZone.classList.remove('drag-over'));
+  camDropZone.addEventListener('drop', e => {
+    e.preventDefault();
+    camDropZone.classList.remove('drag-over');
+    const file = e.dataTransfer.files[0];
+    if (file && file.type.startsWith('image/')) loadImage(file);
+  });
+
+  camFile.addEventListener('change', () => {
+    if (camFile.files[0]) loadImage(camFile.files[0]);
+  });
+
+  camRetakeBtn.addEventListener('click', () => {
+    camPrompt.style.display = '';
+    camCanvasWrap.style.display = 'none';
+    camRetakeBtn.style.display = 'none';
+    camFile.value = '';
+  });
+
+  document.getElementById('gen-btn-cam').addEventListener('click', () => generate(currentHex));
+
+  function loadImage(file) {
+    const url = URL.createObjectURL(file);
+    const img = new Image();
+    img.onload = () => {
+      URL.revokeObjectURL(url);
+
+      // Downsample to MAX_W
+      const scale = Math.min(1, MAX_W / img.naturalWidth);
+      const cw = Math.round(img.naturalWidth * scale);
+      const ch = Math.round(img.naturalHeight * scale);
+      camCanvas.width  = cw;
+      camCanvas.height = ch;
+      ctx = camCanvas.getContext('2d');
+      ctx.drawImage(img, 0, 0, cw, ch);
+
+      // Show canvas
+      camPrompt.style.display = 'none';
+      camCanvasWrap.style.display = '';
+      camRetakeBtn.style.display = '';
+
+      // Place crosshair at center
+      crossX = 0.5; crossY = 0.5;
+      updateCrosshair();
+    };
+    img.src = url;
+  }
+
+  function updateCrosshair() {
+    // Canvas CSS size (may differ from pixel size)
+    const rect = camCanvas.getBoundingClientRect();
+    imgW = rect.width;
+    imgH = rect.height;
+
+    const px = crossX * imgW;
+    const py = crossY * imgH;
+
+    camCrosshair.style.left = px + 'px';
+    camCrosshair.style.top  = py + 'px';
+
+    // Sample pixel from canvas buffer
+    const bufX = Math.round(crossX * (camCanvas.width  - 1));
+    const bufY = Math.round(crossY * (camCanvas.height - 1));
+    const pixel = ctx.getImageData(bufX, bufY, 1, 1).data;
+    const hex = rgbToHex(pixel[0], pixel[1], pixel[2]);
+
+    camPixelPrev.style.background = '#' + hex;
+    syncAll(hex);
+  }
+
+  function pointerToFrac(e) {
+    const rect = camCanvas.getBoundingClientRect();
+    const clientX = e.touches ? e.touches[0].clientX : e.clientX;
+    const clientY = e.touches ? e.touches[0].clientY : e.clientY;
+    crossX = Math.max(0, Math.min(1, (clientX - rect.left)  / rect.width));
+    crossY = Math.max(0, Math.min(1, (clientY - rect.top) / rect.height));
+  }
+
+  // Mouse
+  camCanvas.addEventListener('mousedown', e => {
+    pointerToFrac(e); updateCrosshair();
+    const onMove = e2 => { pointerToFrac(e2); updateCrosshair(); };
+    const onUp   = ()  => { document.removeEventListener('mousemove', onMove); document.removeEventListener('mouseup', onUp); };
+    document.addEventListener('mousemove', onMove);
+    document.addEventListener('mouseup', onUp);
+  });
+
+  // Touch
+  camCanvas.addEventListener('touchstart', e => { e.preventDefault(); pointerToFrac(e); updateCrosshair(); }, { passive: false });
+  camCanvas.addEventListener('touchmove',  e => { e.preventDefault(); pointerToFrac(e); updateCrosshair(); }, { passive: false });
+})();
 
 // ── Init ──────────────────────────────────────────────────────
 syncAll('D4A853');
